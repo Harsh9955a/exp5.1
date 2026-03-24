@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mongoose CRUD — Product Catalog</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6f9;
+  --surface:#ffffff;
+  --border:#e2e6ed;
+  --border-hi:#c8cfd9;
+  --sidebar:#0f1923;
+  --sidebar2:#162130;
+  --text:#0d1117;
+  --text-mid:#536270;
+  --text-lo:#9ba8b6;
+  --green:#00c07f;
+  --green-bg:#e6faf3;
+  --green-dim:#007a50;
+  --red:#e53e3e;
+  --red-bg:#fff0f0;
+  --amber:#d97706;
+  --amber-bg:#fffbeb;
+  --blue:#2563eb;
+  --blue-bg:#eff6ff;
+  --purple:#7c3aed;
+  --str:#c0392b;
+  --num:#1a5fb4;
+  --bool:#7c3aed;
+  --null:#9ba8b6;
+  --key:#0d1117;
+  --tag-h:36px;
+}
+body{font-family:'Sora',sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;color:var(--text);}
+
+/* ══ TOP BAR ══ */
+.topbar{
+  height:52px;background:var(--sidebar);
+  display:flex;align-items:center;padding:0 20px;gap:16px;
+  border-bottom:1px solid #1e2d3d;flex-shrink:0;
+}
+.logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.9rem;color:var(--green);letter-spacing:.08em;}
+.logo span{color:#3a5a6a;font-weight:400;}
+.topbar-path{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#3a6a7a;display:flex;align-items:center;gap:6px;}
+.topbar-path .sep{color:#1e3040;}.topbar-path .hi{color:#7ab8c8;}
+.topbar-right{margin-left:auto;display:flex;gap:8px;}
+.topbar-badge{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:.25rem .6rem;border-radius:3px;border:1px solid #1e3040;color:#3a6a7a;}
+.topbar-badge.connected{border-color:#005a3a;color:var(--green);}
+
+/* ══ LAYOUT ══ */
+.layout{display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px);}
+
+/* ══ SIDEBAR ══ */
+aside{width:230px;min-width:230px;background:var(--sidebar2);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid #1e2d3d;}
+.sb-group{padding:18px 0 8px;}
+.sb-hdr{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:#2a4a5a;padding:0 16px 8px;font-family:'JetBrains Mono',monospace;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:.5rem 16px;font-size:.75rem;color:#4a7a8a;cursor:pointer;transition:all .12s;border-left:3px solid transparent;font-family:'JetBrains Mono',monospace;user-select:none;}
+.sb-item:hover{background:rgba(255,255,255,.04);color:#8ab8c8;}
+.sb-item.active{background:rgba(0,192,127,.06);border-left-color:var(--green);color:var(--green);}
+.sb-item .icon{width:18px;text-align:center;font-size:.85rem;}
+.sb-badge{margin-left:auto;background:rgba(0,192,127,.12);color:var(--green);font-size:.58rem;padding:.1rem .35rem;border-radius:8px;}
+.sb-divider{height:1px;background:#1e2d3d;margin:4px 16px;}
+.sb-crud{padding:12px 16px 8px;}
+.crud-title{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:#2a4a5a;margin-bottom:8px;font-family:'JetBrains Mono',monospace;}
+.crud-op{display:flex;align-items:center;gap:8px;padding:.4rem 8px;border-radius:4px;cursor:pointer;transition:all .12s;margin-bottom:2px;font-size:.72rem;font-family:'JetBrains Mono',monospace;}
+.crud-op:hover{background:rgba(255,255,255,.04);}
+.crud-op.active{background:rgba(255,255,255,.06);}
+.crud-method{font-weight:700;font-size:.65rem;padding:.1rem .35rem;border-radius:3px;width:52px;text-align:center;flex-shrink:0;}
+.m-post{background:rgba(0,192,127,.15);color:var(--green);}
+.m-get{background:rgba(37,99,235,.15);color:#60a5fa;}
+.m-put{background:rgba(217,119,6,.15);color:#fbbf24;}
+.m-del{background:rgba(229,62,62,.15);color:#f87171;}
+.crud-label{color:#5a8a9a;}
+
+/* ══ MAIN ══ */
+main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+
+/* ══ TAB BAR ══ */
+.tabbar{background:var(--surface);border-bottom:2px solid var(--border);display:flex;gap:0;flex-shrink:0;padding:0 24px;}
+.tbtab{padding:.65rem 1.1rem;font-size:.78rem;font-weight:600;color:var(--text-mid);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
+.tbtab:hover{color:var(--text);}
+.tbtab.active{color:var(--green-dim);border-bottom-color:var(--green-dim);}
+
+/* ══ CONTENT ══ */
+.content{padding:22px 26px;display:flex;flex-direction:column;gap:16px;flex:1;}
+
+/* ══ SECTION CARD ══ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.card-hdr{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.card-title{font-size:.88rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.card-title .badge{font-size:.62rem;font-weight:600;padding:.2rem .55rem;border-radius:4px;}
+.badge-create{background:var(--green-bg);color:var(--green-dim);}
+.badge-read{background:var(--blue-bg);color:var(--blue);}
+.badge-update{background:var(--amber-bg);color:var(--amber);}
+.badge-delete{background:var(--red-bg);color:var(--red);}
+.badge-schema{background:#f3f0ff;color:var(--purple);}
+.badge-model{background:#f0f9ff;color:#0369a1;}
+.card-body{padding:18px;}
+.card-footer{padding:10px 18px;border-top:1px solid var(--border);background:#fafbfc;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+
+/* ══ FORM ELEMENTS ══ */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg label{font-size:.72rem;font-weight:600;color:var(--text-mid);letter-spacing:.02em;}
+.fg input,.fg select,.fg textarea{
+  font-family:'JetBrains Mono',monospace;font-size:.8rem;
+  padding:.48rem .75rem;
+  border:1.5px solid var(--border);border-radius:5px;
+  background:#fafbfc;color:var(--text);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,192,127,.1);}
+.fg input.err,.fg select.err{border-color:var(--red);}
+.fg .hint{font-size:.65rem;color:var(--text-lo);margin-top:2px;}
+.fg .val-err{font-size:.65rem;color:var(--red);margin-top:2px;display:none;}
+.fg .val-err.show{display:block;}
+.full{grid-column:1/-1;}
+.fg textarea{resize:vertical;min-height:64px;}
+
+/* ══ BUTTONS ══ */
+.btn{font-family:'Sora',sans-serif;font-size:.78rem;font-weight:600;padding:.45rem 1.1rem;border-radius:5px;border:1.5px solid;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn-green{background:var(--green);border-color:var(--green);color:#fff;}
+.btn-green:hover{background:var(--green-dim);border-color:var(--green-dim);}
+.btn-blue{background:var(--blue);border-color:var(--blue);color:#fff;}
+.btn-blue:hover{background:#1d4ed8;}
+.btn-amber{background:var(--amber);border-color:var(--amber);color:#fff;}
+.btn-amber:hover{background:#b45309;}
+.btn-red{background:var(--red);border-color:var(--red);color:#fff;}
+.btn-red:hover{background:#c53030;}
+.btn-ghost{background:#fff;border-color:var(--border-hi);color:var(--text-mid);}
+.btn-ghost:hover{border-color:var(--text-mid);color:var(--text);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-xs{font-size:.65rem;padding:.25rem .6rem;border-radius:3px;}
+
+/* ══ SEARCH ROW ══ */
+.search-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.search-wrap{position:relative;flex:1;min-width:180px;}
+.search-wrap .icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-lo);font-size:.85rem;pointer-events:none;}
+.search-input{width:100%;font-family:'JetBrains Mono',monospace;font-size:.78rem;padding:.45rem .75rem .45rem 2rem;border:1.5px solid var(--border);border-radius:5px;background:#fafbfc;color:var(--text);outline:none;transition:border-color .15s;}
+.search-input:focus{border-color:var(--green);}
+
+/* ══ PRODUCT TABLE ══ */
+.ptable{width:100%;border-collapse:collapse;font-size:.78rem;}
+.ptable thead th{padding:.55rem .9rem;text-align:left;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-lo);border-bottom:2px solid var(--border);font-weight:700;white-space:nowrap;}
+.ptable tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+.ptable tbody tr:hover{background:#f8fafc;}
+.ptable tbody tr:last-child{border-bottom:none;}
+.ptable td{padding:.6rem .9rem;vertical-align:middle;}
+.td-name{font-weight:700;color:var(--text);}
+.td-id{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-lo);}
+.td-price{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--num);}
+.td-cat{font-size:.72rem;}
+.chip{display:inline-block;padding:.18rem .55rem;border-radius:4px;font-size:.65rem;font-weight:700;}
+.chip-elec{background:#eff6ff;color:#1d4ed8;}
+.chip-clot{background:#f5f3ff;color:#6d28d9;}
+.chip-appl{background:#fff7ed;color:#c2410c;}
+.chip-sprt{background:#f0fdf4;color:#166534;}
+.chip-home{background:#fdf4ff;color:#86198f;}
+.in-stock{color:var(--green);font-weight:700;}
+.out-stock{color:var(--red);font-weight:700;}
+.td-actions{display:flex;gap:6px;}
+
+/* ══ DETAIL PANEL ══ */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.detail-row{display:flex;flex-direction:column;gap:3px;}
+.detail-lbl{font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-lo);}
+.detail-val{font-size:.82rem;color:var(--text);font-family:'JetBrains Mono',monospace;}
+
+/* ══ MONGOOSE CODE BLOCK ══ */
+.code-block{background:#0f1923;border-radius:6px;padding:18px 20px;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;overflow-x:auto;}
+.c-comment{color:#3a6a7a;font-style:italic;}
+.c-kw{color:#00c07f;}.c-type{color:#f0b429;}.c-str{color:#c0392b;}.c-num{color:#4db8ff;}
+.c-prop{color:#a8d8df;}.c-val{color:#cc88ff;}.c-fn{color:#7ab8c8;}.c-dim{color:#2a4a5a;}
+.c-white{color:#e0e8f0;}
+
+/* ══ VALIDATION BADGE ══ */
+.val-row{display:flex;align-items:center;gap:8px;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.78rem;}
+.val-row:last-child{border-bottom:none;}
+.val-field{font-family:'JetBrains Mono',monospace;color:var(--key);width:100px;flex-shrink:0;}
+.val-rule{flex:1;color:var(--text-mid);font-size:.72rem;}
+.val-status{font-size:.65rem;font-weight:700;padding:.15rem .4rem;border-radius:3px;}
+.vs-req{background:var(--red-bg);color:var(--red);}
+.vs-opt{background:var(--green-bg);color:var(--green-dim);}
+
+/* ══ LOG ══ */
+.log-area{background:#0f1923;border-radius:6px;padding:12px 14px;max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;}
+.log-line{display:flex;gap:10px;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.5;}
+.log-ts{color:#2a4a5a;flex-shrink:0;}
+.log-op{flex-shrink:0;font-weight:700;width:56px;}
+.log-op.create{color:var(--green);}.log-op.read{color:#60a5fa;}.log-op.update{color:#fbbf24;}.log-op.delete{color:#f87171;}.log-op.system{color:#3a6a7a;}
+.log-msg{color:#7ab8c8;}
+.log-res{color:#2a5a4a;font-size:.65rem;}
+
+/* ══ STATS ══ */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+.stat-label{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-lo);margin-bottom:8px;}
+.stat-num{font-family:'JetBrains Mono',monospace;font-size:1.65rem;font-weight:800;}
+.stat-sub{font-size:.65rem;color:var(--text-lo);margin-top:4px;}
+.sn-total{color:var(--text);}
+.sn-green{color:var(--green);}
+.sn-amber{color:var(--amber);}
+.sn-red{color:var(--red);}
+
+/* ══ EMPTY ══ */
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-lo);}
+.empty-icon{font-size:2.5rem;margin-bottom:10px;opacity:.5;}
+
+/* ══ OVERLAY / MODAL ══ */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;backdrop-filter:blur(2px);}
+#overlay.open{display:block;}
+.modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;background:var(--surface);border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.22);width:520px;max-width:95vw;overflow:hidden;}
+.modal.open{display:block;animation:mopen .18s ease;}
+@keyframes mopen{from{transform:translate(-50%,-46%);opacity:0}to{transform:translate(-50%,-50%);opacity:1}}
+.modal-hdr{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-hdr h3{font-size:1rem;font-weight:700;}
+.modal-x{background:none;border:none;font-size:1.5rem;color:var(--text-lo);cursor:pointer;line-height:1;}
+.modal-x:hover{color:var(--red);}
+.modal-body{padding:20px 22px;}
+.modal-ftr{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+
+/* ══ CONFIRM ══ */
+#confirm-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:55;background:var(--surface);border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.22);width:380px;max-width:95vw;padding:26px 24px;}
+#confirm-modal.open{display:block;}
+#confirm-modal h3{font-size:.95rem;font-weight:700;margin-bottom:8px;}
+#confirm-modal p{font-size:.82rem;color:var(--text-mid);margin-bottom:20px;line-height:1.5;}
+.confirm-btns{display:flex;justify-content:flex-end;gap:8px;}
+
+/* ══ TOAST ══ */
+.toast{position:fixed;bottom:24px;right:24px;padding:.7rem 1.1rem;border-radius:7px;font-size:.82rem;font-weight:600;color:#fff;box-shadow:0 8px 28px rgba(0,0,0,.2);z-index:100;opacity:0;transform:translateY(14px);transition:all .22s ease;pointer-events:none;max-width:320px;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.create{background:var(--green-dim);}
+.toast.read{background:var(--blue);}
+.toast.update{background:var(--amber);}
+.toast.delete{background:var(--red);}
+.toast.error{background:#7f1d1d;}
+
+/* ══ SCROLLBAR ══ */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:3px;}
+@media(max-width:700px){aside{display:none;}.stats-row{grid-template-columns:1fr 1fr;}.form-grid,.form-grid-3{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">Mongoose <span>ODM</span></div>
+  <div class="topbar-path">
+    <span>productDB</span><span class="sep">›</span>
+    <span class="hi">products</span><span class="sep">›</span>
+    <span class="hi">CRUD</span>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-badge connected">● mongoose connected</div>
+    <div class="topbar-badge">MongoDB 7.0</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sb-group">
+      <div class="sb-hdr">Navigation</div>
+      <div class="sb-item active" id="sb-overview"  onclick="showTab('overview')"><span class="icon">◈</span> Overview</div>
+      <div class="sb-item"        id="sb-schema"    onclick="showTab('schema')"><span class="icon">≡</span> Schema & Model</div>
+      <div class="sb-item"        id="sb-create"    onclick="showTab('create')"><span class="icon">+</span> Create</div>
+      <div class="sb-item"        id="sb-read"      onclick="showTab('read')"><span class="icon">⊞</span> Read <span class="sb-badge" id="sb-count">0</span></div>
+      <div class="sb-item"        id="sb-update"    onclick="showTab('update')"><span class="icon">✎</span> Update</div>
+      <div class="sb-item"        id="sb-delete"    onclick="showTab('delete')"><span class="icon">✕</span> Delete</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-crud">
+      <div class="crud-title">Mongoose Methods</div>
+      <div class="crud-op"><span class="crud-method m-post">POST</span><span class="crud-label">new Product().save()</span></div>
+      <div class="crud-op"><span class="crud-method m-get">GET</span><span class="crud-label">Product.find()</span></div>
+      <div class="crud-op"><span class="crud-method m-get">GET</span><span class="crud-label">Product.findById()</span></div>
+      <div class="crud-op"><span class="crud-method m-put">PUT</span><span class="crud-label">findByIdAndUpdate()</span></div>
+      <div class="crud-op"><span class="crud-method m-del">DEL</span><span class="crud-label">findByIdAndDelete()</span></div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-crud">
+      <div class="crud-title">Validation Rules</div>
+      <div class="crud-op" style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#2a6a4a">✓ name — required</div>
+      <div class="crud-op" style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#2a6a4a">✓ price — required, min:0</div>
+      <div class="crud-op" style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#2a6a4a">✓ category — enum</div>
+      <div class="crud-op" style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#2a6a4a">✓ stock — min:0</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="tabbar">
+      <div class="tbtab active" id="tab-overview"  onclick="showTab('overview')">Overview</div>
+      <div class="tbtab"        id="tab-schema"    onclick="showTab('schema')">Schema &amp; Model</div>
+      <div class="tbtab"        id="tab-create"    onclick="showTab('create')">C — Create</div>
+      <div class="tbtab"        id="tab-read"      onclick="showTab('read')">R — Read</div>
+      <div class="tbtab"        id="tab-update"    onclick="showTab('update')">U — Update</div>
+      <div class="tbtab"        id="tab-delete"    onclick="showTab('delete')">D — Delete</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ════════════════════════════
+           OVERVIEW
+      ════════════════════════════ -->
+      <div id="view-overview">
+        <div class="stats-row" id="overview-stats"></div>
+
+        <!-- CRUD quick-ref cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card">
+            <div class="card-hdr"><div class="card-title"><span>C</span><span class="badge badge-create">CREATE</span></div><code style="font-size:.7rem;color:var(--text-lo)">Product.save()</code></div>
+            <div class="card-body" style="padding:14px 18px">
+              <div class="code-block" style="font-size:.72rem;padding:12px 14px">
+<span class="c-kw">const</span> <span class="c-white">p</span> = <span class="c-kw">new</span> <span class="c-type">Product</span>({<br>
+&nbsp;&nbsp;<span class="c-prop">name</span>: <span class="c-str">"iPhone 15"</span>,<br>
+&nbsp;&nbsp;<span class="c-prop">price</span>: <span class="c-num">79999</span>,<br>
+&nbsp;&nbsp;<span class="c-prop">category</span>: <span class="c-str">"Electronics"</span>,<br>
+});<br>
+<span class="c-kw">await</span> p.<span class="c-fn">save</span>();<span class="c-comment">  // validate + insert</span>
+              </div>
+            </div>
+            <div class="card-footer"><button class="btn btn-green" onclick="showTab('create')">+ Create Product</button></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title"><span>R</span><span class="badge badge-read">READ</span></div><code style="font-size:.7rem;color:var(--text-lo)">Product.find()</code></div>
+            <div class="card-body" style="padding:14px 18px">
+              <div class="code-block" style="font-size:.72rem;padding:12px 14px">
+<span class="c-comment">// All products</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">find</span>({});<br><br>
+<span class="c-comment">// Filter by category</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">find</span>({<br>
+&nbsp;&nbsp;<span class="c-prop">category</span>: <span class="c-str">"Electronics"</span><br>
+});
+              </div>
+            </div>
+            <div class="card-footer"><button class="btn btn-blue" onclick="showTab('read')">⊞ View Products</button></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title"><span>U</span><span class="badge badge-update">UPDATE</span></div><code style="font-size:.7rem;color:var(--text-lo)">findByIdAndUpdate()</code></div>
+            <div class="card-body" style="padding:14px 18px">
+              <div class="code-block" style="font-size:.72rem;padding:12px 14px">
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">findByIdAndUpdate</span>(<br>
+&nbsp;&nbsp;id,<br>
+&nbsp;&nbsp;{ <span class="c-prop">$set</span>: { <span class="c-prop">price</span>: <span class="c-num">89999</span> } },<br>
+&nbsp;&nbsp;{ <span class="c-prop">new</span>: <span class="c-val">true</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-prop">runValidators</span>: <span class="c-val">true</span> }<br>
+);
+              </div>
+            </div>
+            <div class="card-footer"><button class="btn btn-amber" onclick="showTab('update')">✎ Update Product</button></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title"><span>D</span><span class="badge badge-delete">DELETE</span></div><code style="font-size:.7rem;color:var(--text-lo)">findByIdAndDelete()</code></div>
+            <div class="card-body" style="padding:14px 18px">
+              <div class="code-block" style="font-size:.72rem;padding:12px 14px">
+<span class="c-comment">// Delete one document</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">findByIdAndDelete</span>(id);<br><br>
+<span class="c-comment">// Delete many</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">deleteMany</span>({<br>
+&nbsp;&nbsp;<span class="c-prop">inStock</span>: <span class="c-val">false</span><br>
+});
+              </div>
+            </div>
+            <div class="card-footer"><button class="btn btn-red" onclick="showTab('delete')">✕ Delete Products</button></div>
+          </div>
+        </div>
+
+        <!-- Operation Log -->
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">Operation Log <span class="badge badge-schema" style="font-size:.6rem">Live</span></div>
+            <button class="btn btn-ghost btn-xs" onclick="clearLog()">Clear</button>
+          </div>
+          <div class="card-body" style="padding:12px 18px">
+            <div class="log-area" id="op-log">
+              <div class="log-line"><span class="log-ts">[BOOT]</span><span class="log-op system">SYS</span><span class="log-msg">Mongoose connected to productDB · schema registered · 5 seed documents loaded</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════
+           SCHEMA & MODEL
+      ════════════════════════════ -->
+      <div id="view-schema" style="display:none">
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Mongoose Schema Definition <span class="badge badge-schema">Schema</span></div></div>
+          <div class="card-body">
+            <div class="code-block">
+<span class="c-kw">const</span> { <span class="c-white">Schema</span>, <span class="c-white">model</span> } = <span class="c-fn">require</span>(<span class="c-str">'mongoose'</span>);<br><br>
+<span class="c-comment">// ── Product Schema ──────────────────────────────────────────</span><br>
+<span class="c-kw">const</span> <span class="c-white">productSchema</span> = <span class="c-kw">new</span> <span class="c-type">Schema</span>({<br>
+&nbsp;&nbsp;<span class="c-prop">name</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;type: <span class="c-type">String</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;required: [<span class="c-val">true</span>, <span class="c-str">'Product name is required'</span>],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;trim: <span class="c-val">true</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;minlength: <span class="c-num">2</span>,  maxlength: <span class="c-num">100</span>,<br>
+&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;<span class="c-prop">price</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;type: <span class="c-type">Number</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;required: [<span class="c-val">true</span>, <span class="c-str">'Price is required'</span>],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;min: [<span class="c-num">0</span>, <span class="c-str">'Price cannot be negative'</span>],<br>
+&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;<span class="c-prop">category</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;type: <span class="c-type">String</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;required: <span class="c-val">true</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;enum: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;values: [<span class="c-str">'Electronics'</span>, <span class="c-str">'Clothing'</span>, <span class="c-str">'Appliances'</span>, <span class="c-str">'Sports'</span>, <span class="c-str">'Home'</span>],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: <span class="c-str">'{VALUE} is not a valid category'</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;<span class="c-prop">description</span>: { type: <span class="c-type">String</span>, default: <span class="c-str">''</span> },<br>
+&nbsp;&nbsp;<span class="c-prop">stock</span>: { type: <span class="c-type">Number</span>, default: <span class="c-num">0</span>, min: <span class="c-num">0</span> },<br>
+&nbsp;&nbsp;<span class="c-prop">inStock</span>: { type: <span class="c-type">Boolean</span>, default: <span class="c-val">true</span> },<br>
+&nbsp;&nbsp;<span class="c-prop">brand</span>: { type: <span class="c-type">String</span>, default: <span class="c-str">''</span> },<br>
+&nbsp;&nbsp;<span class="c-prop">rating</span>: { type: <span class="c-type">Number</span>, default: <span class="c-val">null</span>, min: <span class="c-num">0</span>, max: <span class="c-num">5</span> },<br>
+&nbsp;&nbsp;<span class="c-prop">createdAt</span>: { type: <span class="c-type">Date</span>, default: Date.<span class="c-fn">now</span> },<br>
+&nbsp;&nbsp;<span class="c-prop">updatedAt</span>: { type: <span class="c-type">Date</span>, default: Date.<span class="c-fn">now</span> },<br>
+}, { <span class="c-prop">timestamps</span>: <span class="c-val">true</span> });<br><br>
+<span class="c-comment">// ── Middleware (pre-save hook) ───────────────────────────────</span><br>
+productSchema.<span class="c-fn">pre</span>(<span class="c-str">'save'</span>, <span class="c-kw">function</span>(<span class="c-white">next</span>) {<br>
+&nbsp;&nbsp;<span class="c-kw">this</span>.<span class="c-prop">inStock</span> = <span class="c-kw">this</span>.<span class="c-prop">stock</span> > <span class="c-num">0</span>;  <span class="c-comment">// auto-set inStock</span><br>
+&nbsp;&nbsp;<span class="c-kw">this</span>.<span class="c-prop">updatedAt</span> = <span class="c-kw">new</span> <span class="c-type">Date</span>();<br>
+&nbsp;&nbsp;<span class="c-fn">next</span>();<br>
+});<br><br>
+<span class="c-comment">// ── Instance Method ─────────────────────────────────────────</span><br>
+productSchema.<span class="c-prop">methods</span>.<span class="c-fn">applyDiscount</span> = <span class="c-kw">function</span>(<span class="c-white">pct</span>) {<br>
+&nbsp;&nbsp;<span class="c-kw">return</span> <span class="c-kw">this</span>.<span class="c-prop">price</span> * (<span class="c-num">1</span> - pct / <span class="c-num">100</span>);<br>
+};<br><br>
+<span class="c-comment">// ── Create Model ────────────────────────────────────────────</span><br>
+<span class="c-kw">const</span> <span class="c-type">Product</span> = <span class="c-fn">model</span>(<span class="c-str">'Product'</span>, productSchema);<br>
+<span class="c-kw">module</span>.<span class="c-prop">exports</span> = <span class="c-type">Product</span>;
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation table -->
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Validation Rules <span class="badge badge-schema">ODM</span></div></div>
+          <div class="card-body" style="padding:8px 18px">
+            <div class="val-row"><span class="val-field">name</span><span class="val-rule">required · String · trim · minlength:2 · maxlength:100</span><span class="val-status vs-req">required</span></div>
+            <div class="val-row"><span class="val-field">price</span><span class="val-rule">required · Number · min:0 (no negative prices)</span><span class="val-status vs-req">required</span></div>
+            <div class="val-row"><span class="val-field">category</span><span class="val-rule">required · enum: Electronics | Clothing | Appliances | Sports | Home</span><span class="val-status vs-req">required</span></div>
+            <div class="val-row"><span class="val-field">stock</span><span class="val-rule">Number · default:0 · min:0</span><span class="val-status vs-opt">optional</span></div>
+            <div class="val-row"><span class="val-field">inStock</span><span class="val-rule">Boolean · auto-set by pre-save middleware (stock &gt; 0)</span><span class="val-status vs-opt">auto</span></div>
+            <div class="val-row"><span class="val-field">brand</span><span class="val-rule">String · default:''</span><span class="val-status vs-opt">optional</span></div>
+            <div class="val-row"><span class="val-field">rating</span><span class="val-rule">Number | null · min:0 · max:5</span><span class="val-status vs-opt">optional</span></div>
+            <div class="val-row"><span class="val-field">description</span><span class="val-rule">String · default:''</span><span class="val-status vs-opt">optional</span></div>
+            <div class="val-row"><span class="val-field">createdAt</span><span class="val-rule">Date · auto-set on insert (timestamps:true)</span><span class="val-status vs-opt">auto</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════
+           CREATE
+      ════════════════════════════ -->
+      <div id="view-create" style="display:none">
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">new Product(data).save() <span class="badge badge-create">CREATE</span></div>
+            <code style="font-size:.7rem;color:var(--text-lo)">POST /api/products</code>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="fg">
+                <label>Product Name *</label>
+                <input type="text" id="c-name" placeholder="e.g. iPhone 15 Pro">
+                <div class="val-err" id="c-name-err">Name is required (min 2 chars)</div>
+              </div>
+              <div class="fg">
+                <label>Brand</label>
+                <input type="text" id="c-brand" placeholder="e.g. Apple">
+              </div>
+              <div class="fg">
+                <label>Category *</label>
+                <select id="c-cat">
+                  <option value="">— Select category —</option>
+                  <option>Electronics</option><option>Clothing</option>
+                  <option>Appliances</option><option>Sports</option><option>Home</option>
+                </select>
+                <div class="val-err" id="c-cat-err">Category is required</div>
+              </div>
+              <div class="fg">
+                <label>Price (₹) *</label>
+                <input type="number" id="c-price" placeholder="e.g. 79999" min="0" step="0.01">
+                <div class="val-err" id="c-price-err">Price is required and must be ≥ 0</div>
+              </div>
+              <div class="fg">
+                <label>Stock Qty</label>
+                <input type="number" id="c-stock" placeholder="0" min="0" value="0">
+                <div class="hint">inStock auto-set by pre-save middleware (stock &gt; 0)</div>
+              </div>
+              <div class="fg">
+                <label>Rating (0–5)</label>
+                <input type="number" id="c-rating" placeholder="e.g. 4.5" min="0" max="5" step="0.1">
+              </div>
+              <div class="fg full">
+                <label>Description</label>
+                <textarea id="c-desc" placeholder="Product description…"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div style="font-size:.72rem;color:var(--text-lo)">Mongoose runs validation before saving to database</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost" onclick="resetCreate()">Clear Form</button>
+              <button class="btn btn-green" onclick="createProduct()">+ Save Document</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mongoose code preview -->
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Generated Mongoose Code</div></div>
+          <div class="card-body" style="padding:14px 18px">
+            <div class="code-block" id="create-code-preview">
+<span class="c-comment">// Fill the form above to see generated code</span><br>
+<span class="c-kw">const</span> <span class="c-white">product</span> = <span class="c-kw">new</span> <span class="c-type">Product</span>({ <span class="c-dim">…</span> });<br>
+<span class="c-kw">await</span> product.<span class="c-fn">save</span>();
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════
+           READ
+      ════════════════════════════ -->
+      <div id="view-read" style="display:none">
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">Product.find() &amp; findById() <span class="badge badge-read">READ</span></div>
+            <code style="font-size:.7rem;color:var(--text-lo)">GET /api/products</code>
+          </div>
+          <div class="card-body" style="padding:14px 18px">
+            <div class="search-row">
+              <div class="search-wrap">
+                <span class="icon">⌕</span>
+                <input class="search-input" id="r-search" placeholder="Search by name, brand, description…" oninput="readFilter()">
+              </div>
+              <select id="r-cat" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:.43rem .7rem;border:1.5px solid var(--border);border-radius:5px;background:#fafbfc;color:var(--text);outline:none;cursor:pointer;" onchange="readFilter()">
+                <option value="">All Categories</option>
+                <option>Electronics</option><option>Clothing</option>
+                <option>Appliances</option><option>Sports</option><option>Home</option>
+              </select>
+              <select id="r-stock" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:.43rem .7rem;border:1.5px solid var(--border);border-radius:5px;background:#fafbfc;color:var(--text);outline:none;cursor:pointer;" onchange="readFilter()">
+                <option value="">All Stock</option>
+                <option value="true">In Stock</option>
+                <option value="false">Out of Stock</option>
+              </select>
+              <button class="btn btn-ghost" onclick="resetRead()">Reset</button>
+            </div>
+          </div>
+          <div id="read-table-wrap" style="overflow-x:auto">
+            <table class="ptable" id="read-table">
+              <thead><tr>
+                <th>_id</th><th>Name</th><th>Category</th><th>Brand</th>
+                <th>Price</th><th>Stock</th><th>inStock</th><th>Rating</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="read-tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-footer">
+            <div style="font-size:.72rem;color:var(--text-lo)" id="read-count-label">0 documents</div>
+            <div style="font-size:.72rem;color:var(--text-lo)">Product.find(filter).sort({ createdAt: -1 })</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════
+           UPDATE
+      ════════════════════════════ -->
+      <div id="view-update" style="display:none">
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">findByIdAndUpdate() <span class="badge badge-update">UPDATE</span></div>
+            <code style="font-size:.7rem;color:var(--text-lo)">PUT /api/products/:id</code>
+          </div>
+          <div class="card-body">
+            <div class="fg" style="margin-bottom:14px">
+              <label>Select Product to Update *</label>
+              <select id="u-select" onchange="fillUpdateForm()">
+                <option value="">— Choose a product —</option>
+              </select>
+            </div>
+            <div id="u-form-wrap" style="opacity:.4;pointer-events:none;transition:opacity .2s">
+              <div class="form-grid">
+                <div class="fg"><label>Product Name *</label><input type="text" id="u-name" placeholder="Product name"></div>
+                <div class="fg"><label>Brand</label><input type="text" id="u-brand" placeholder="Brand"></div>
+                <div class="fg"><label>Category *</label>
+                  <select id="u-cat">
+                    <option value="">— Select —</option>
+                    <option>Electronics</option><option>Clothing</option>
+                    <option>Appliances</option><option>Sports</option><option>Home</option>
+                  </select>
+                </div>
+                <div class="fg"><label>Price (₹) *</label><input type="number" id="u-price" min="0" step="0.01"></div>
+                <div class="fg"><label>Stock Qty</label><input type="number" id="u-stock" min="0"></div>
+                <div class="fg"><label>Rating (0–5)</label><input type="number" id="u-rating" min="0" max="5" step="0.1"></div>
+                <div class="fg full"><label>Description</label><textarea id="u-desc"></textarea></div>
+              </div>
+              <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:10px 14px;margin-top:4px;font-size:.75rem;color:#92400e">
+                ⚠ Uses <code>{ new: true, runValidators: true }</code> — returns updated doc and runs schema validation
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div style="font-size:.72rem;color:var(--text-lo)">$set operator updates only specified fields</div>
+            <button class="btn btn-amber" onclick="updateProduct()" id="u-btn" disabled>✎ Save Changes</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Generated Mongoose Code</div></div>
+          <div class="card-body" style="padding:14px 18px">
+            <div class="code-block" id="update-code">
+<span class="c-comment">// Select a product above to see the update query</span><br>
+<span class="c-kw">const</span> <span class="c-white">updated</span> = <span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">findByIdAndUpdate</span>(<br>
+&nbsp;&nbsp;id,<br>
+&nbsp;&nbsp;{ <span class="c-prop">$set</span>: { <span class="c-dim">…changes</span> } },<br>
+&nbsp;&nbsp;{ <span class="c-prop">new</span>: <span class="c-val">true</span>, <span class="c-prop">runValidators</span>: <span class="c-val">true</span> }<br>
+);
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════
+           DELETE
+      ════════════════════════════ -->
+      <div id="view-delete" style="display:none">
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">findByIdAndDelete() <span class="badge badge-delete">DELETE</span></div>
+            <code style="font-size:.7rem;color:var(--text-lo)">DELETE /api/products/:id</code>
+          </div>
+          <div class="card-body" style="overflow-x:auto">
+            <table class="ptable">
+              <thead><tr>
+                <th>_id</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>inStock</th><th>Action</th>
+              </tr></thead>
+              <tbody id="del-tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-footer">
+            <div style="font-size:.72rem;color:var(--text-lo)">⚠ Delete is permanent — no undo</div>
+            <button class="btn btn-red btn-xs" onclick="deleteOutOfStock()">Delete All Out-of-Stock</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Delete Methods Reference</div></div>
+          <div class="card-body" style="padding:14px 18px">
+            <div class="code-block">
+<span class="c-comment">// Delete one by ID</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">findByIdAndDelete</span>(id);<br><br>
+<span class="c-comment">// Delete many matching a condition</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">deleteMany</span>({ <span class="c-prop">inStock</span>: <span class="c-val">false</span> });<br><br>
+<span class="c-comment">// Delete one matching a filter</span><br>
+<span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">findOneAndDelete</span>({ <span class="c-prop">name</span>: <span class="c-str">"Old Product"</span> });
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay" onclick="closeAll()"></div>
+
+<!-- EDIT MODAL (from Read tab) -->
+<div class="modal" id="edit-modal">
+  <div class="modal-hdr">
+    <h3>Edit Product <span id="edit-id-label" style="font-size:.65rem;color:var(--text-lo);font-family:'JetBrains Mono',monospace;font-weight:400"></span></h3>
+    <button class="modal-x" onclick="closeAll()">×</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="em-id">
+    <div class="form-grid">
+      <div class="fg"><label>Name *</label><input type="text" id="em-name"></div>
+      <div class="fg"><label>Brand</label><input type="text" id="em-brand"></div>
+      <div class="fg"><label>Category *</label>
+        <select id="em-cat">
+          <option>Electronics</option><option>Clothing</option>
+          <option>Appliances</option><option>Sports</option><option>Home</option>
+        </select>
+      </div>
+      <div class="fg"><label>Price (₹) *</label><input type="number" id="em-price" min="0" step="0.01"></div>
+      <div class="fg"><label>Stock</label><input type="number" id="em-stock" min="0"></div>
+      <div class="fg"><label>Rating</label><input type="number" id="em-rating" min="0" max="5" step="0.1"></div>
+      <div class="fg full"><label>Description</label><textarea id="em-desc"></textarea></div>
+    </div>
+    <p id="em-err" style="color:var(--red);font-size:.75rem;margin-top:8px;min-height:16px"></p>
+  </div>
+  <div class="modal-ftr">
+    <button class="btn btn-ghost" onclick="closeAll()">Cancel</button>
+    <button class="btn btn-amber" onclick="saveEditModal()">✎ Save Changes</button>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div id="confirm-modal">
+  <h3>Confirm Delete</h3>
+  <p id="confirm-msg"></p>
+  <div class="confirm-btns">
+    <button class="btn btn-ghost" onclick="closeAll()">Cancel</button>
+    <button class="btn btn-red" id="confirm-yes-btn">Delete</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  MONGOOSE MODEL SIMULATION
+//  Simulates Schema validation + middleware
+// ══════════════════════════════════════════════
+const CATS = ['Electronics','Clothing','Appliances','Sports','Home'];
+
+function newId(){ return Math.random().toString(36).slice(2,10)+'a1b2'; }
+function ts(){ const n=new Date(); return `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ── Schema Validation (mirrors Mongoose rules) ──────────────
+function validate(data){
+  const errs=[];
+  if(!data.name||data.name.trim().length<2) errs.push('name: required, min 2 chars');
+  if(data.price===''||data.price===null||data.price===undefined||isNaN(Number(data.price))) errs.push('price: required');
+  if(Number(data.price)<0) errs.push('price: cannot be negative');
+  if(!data.category||!CATS.includes(data.category)) errs.push('category: must be one of '+CATS.join(', '));
+  if(data.stock!==''&&!isNaN(Number(data.stock))&&Number(data.stock)<0) errs.push('stock: cannot be negative');
+  if(data.rating!==''&&data.rating!==null&&!isNaN(Number(data.rating))&&(Number(data.rating)<0||Number(data.rating)>5)) errs.push('rating: must be between 0 and 5');
+  return errs;
+}
+
+// ── Pre-save middleware (auto-set inStock) ──────────────────
+function preSave(doc){
+  doc.inStock = doc.stock > 0;
+  doc.updatedAt = new Date();
+  return doc;
+}
+
+// ── Database (array-based store) ────────────────────────────
+let DB = [
+  {_id:newId(),name:'iPhone 15 Pro',brand:'Apple',category:'Electronics',price:129999,stock:25,inStock:true,rating:4.8,description:'Latest Apple flagship with titanium design.',createdAt:new Date('2024-01-10'),updatedAt:new Date('2024-01-10')},
+  {_id:newId(),name:'Running Shoes X',brand:'Nike',category:'Sports',price:8999,stock:0,inStock:false,rating:4.3,description:'Lightweight running shoes for marathon training.',createdAt:new Date('2024-01-15'),updatedAt:new Date('2024-01-15')},
+  {_id:newId(),name:'Air Fryer 5L',brand:'Philips',category:'Appliances',price:7499,stock:12,inStock:true,rating:4.6,description:'Healthy cooking with 80% less oil.',createdAt:new Date('2024-02-01'),updatedAt:new Date('2024-02-01')},
+  {_id:newId(),name:'Cotton Kurta Set',brand:'Fabindia',category:'Clothing',price:1899,stock:3,inStock:true,rating:4.1,description:'Premium cotton kurta with dupatta.',createdAt:new Date('2024-02-10'),updatedAt:new Date('2024-02-10')},
+  {_id:newId(),name:'Bamboo Shelf Unit',brand:'Wooden Street',category:'Home',price:3299,stock:0,inStock:false,rating:null,description:'3-tier bamboo storage shelf.',createdAt:new Date('2024-03-01'),updatedAt:new Date('2024-03-01')},
+];
+
+// ══════════════════════════════════════════════
+//  CRUD OPERATIONS
+// ══════════════════════════════════════════════
+
+// CREATE — new Product(data).save()
+function createProduct(){
+  const data={
+    name:   document.getElementById('c-name').value.trim(),
+    brand:  document.getElementById('c-brand').value.trim(),
+    category: document.getElementById('c-cat').value,
+    price:  document.getElementById('c-price').value,
+    stock:  document.getElementById('c-stock').value||'0',
+    rating: document.getElementById('c-rating').value||null,
+    description: document.getElementById('c-desc').value.trim(),
+  };
+
+  // Reset errors
+  ['c-name','c-cat','c-price'].forEach(id=>{
+    document.getElementById(id).classList.remove('err');
+    const e=document.getElementById(id+'-err');
+    if(e) e.classList.remove('show');
+  });
+
+  const errs=validate(data);
+  if(errs.length){
+    if(errs.some(e=>e.startsWith('name'))){ document.getElementById('c-name').classList.add('err'); document.getElementById('c-name-err').classList.add('show'); }
+    if(errs.some(e=>e.startsWith('category'))){ document.getElementById('c-cat').classList.add('err'); document.getElementById('c-cat-err').classList.add('show'); }
+    if(errs.some(e=>e.startsWith('price'))){ document.getElementById('c-price').classList.add('err'); document.getElementById('c-price-err').classList.add('show'); }
+    logOp('create','ValidationError: '+errs.join(' · '));
+    toast('Validation Error: '+errs[0],'error');
+    return;
+  }
+
+  const doc = preSave({
+    _id: newId(),
+    name: data.name,
+    brand: data.brand||'',
+    category: data.category,
+    price: parseFloat(data.price),
+    stock: parseInt(data.stock)||0,
+    rating: data.rating!==''&&data.rating!==null ? parseFloat(data.rating) : null,
+    description: data.description,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  DB.unshift(doc);
+  updateCreateCodePreview();
+  resetCreate();
+  refreshAll();
+  logOp('create', `new Product().save() → inserted "${doc.name}" (_id: ${doc._id})`);
+  toast('Created: "'+doc.name+'"','create');
+}
+
+// READ — Product.find()
+function readProducts(filter={}){
+  let data=[...DB];
+  const q=(filter.q||'').toLowerCase();
+  const cat=filter.cat||'';
+  const stock=filter.stock;
+  if(q) data=data.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)||(p.description||'').toLowerCase().includes(q));
+  if(cat) data=data.filter(p=>p.category===cat);
+  if(stock==='true') data=data.filter(p=>p.inStock);
+  if(stock==='false') data=data.filter(p=>!p.inStock);
+  return data;
+}
+
+function renderReadTable(data){
+  document.getElementById('read-count-label').textContent=data.length+' document'+( data.length!==1?'s':'');
+  const tbody=document.getElementById('read-tbody');
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">◌</div><p>No products found.</p></div></td></tr>`; return; }
+  tbody.innerHTML=data.map(p=>`<tr>
+    <td class="td-id">${p._id.slice(0,8)}…</td>
+    <td class="td-name">${esc(p.name)}</td>
+    <td class="td-cat"><span class="chip chip-${p.category.slice(0,4).toLowerCase()}">${p.category}</span></td>
+    <td style="font-size:.75rem">${esc(p.brand)||'—'}</td>
+    <td class="td-price">₹${p.price.toLocaleString('en-IN')}</td>
+    <td style="font-family:'JetBrains Mono',monospace;font-weight:600">${p.stock}</td>
+    <td><span class="${p.inStock?'in-stock':'out-stock'}">${p.inStock?'true':'false'}</span></td>
+    <td style="font-family:'JetBrains Mono',monospace;font-size:.75rem">${p.rating!==null?p.rating:'null'}</td>
+    <td class="td-actions">
+      <button class="btn btn-ghost btn-xs" onclick="openEditModal('${p._id}')">Edit</button>
+      <button class="btn btn-xs" style="background:var(--red-bg);border-color:var(--red);color:var(--red)" onclick="confirmDelete('${p._id}')">Del</button>
+    </td>
+  </tr>`).join('');
+}
+
+function readFilter(){
+  const data=readProducts({
+    q: document.getElementById('r-search').value,
+    cat: document.getElementById('r-cat').value,
+    stock: document.getElementById('r-stock').value,
+  });
+  renderReadTable(data);
+  logOp('read','Product.find({ '+buildFilterLog()+' }) → '+data.length+' results');
+}
+
+function buildFilterLog(){
+  const parts=[];
+  const q=document.getElementById('r-search')?.value;
+  const cat=document.getElementById('r-cat')?.value;
+  const stock=document.getElementById('r-stock')?.value;
+  if(q) parts.push('$text: "'+q+'"');
+  if(cat) parts.push('category: "'+cat+'"');
+  if(stock) parts.push('inStock: '+stock);
+  return parts.join(', ')||'all';
+}
+
+function resetRead(){
+  document.getElementById('r-search').value='';
+  document.getElementById('r-cat').value='';
+  document.getElementById('r-stock').value='';
+  renderReadTable(DB);
+}
+
+// UPDATE — findByIdAndUpdate()
+function fillUpdateSelect(){
+  const sel=document.getElementById('u-select');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Choose a product —</option>'+
+    DB.map(p=>`<option value="${p._id}">${esc(p.name)} — ₹${p.price.toLocaleString('en-IN')}</option>`).join('');
+  if(DB.find(p=>p._id===cur)) sel.value=cur;
+}
+
+function fillUpdateForm(){
+  const id=document.getElementById('u-select').value;
+  const wrap=document.getElementById('u-form-wrap');
+  const btn=document.getElementById('u-btn');
+  if(!id){ wrap.style.opacity='.4'; wrap.style.pointerEvents='none'; btn.disabled=true; return; }
+  const p=DB.find(x=>x._id===id);
+  if(!p) return;
+  wrap.style.opacity='1'; wrap.style.pointerEvents='auto'; btn.disabled=false;
+  document.getElementById('u-name').value=p.name;
+  document.getElementById('u-brand').value=p.brand||'';
+  document.getElementById('u-cat').value=p.category;
+  document.getElementById('u-price').value=p.price;
+  document.getElementById('u-stock').value=p.stock;
+  document.getElementById('u-rating').value=p.rating!==null?p.rating:'';
+  document.getElementById('u-desc').value=p.description||'';
+  renderUpdateCode(p._id);
+}
+
+function renderUpdateCode(id){
+  const el=document.getElementById('update-code');
+  el.innerHTML=`<span class="c-kw">const</span> <span class="c-white">updated</span> = <span class="c-kw">await</span> <span class="c-type">Product</span>.<span class="c-fn">findByIdAndUpdate</span>(<br>&nbsp;&nbsp;<span class="c-str">"${id}"</span>,<br>&nbsp;&nbsp;{ <span class="c-prop">$set</span>: { <span class="c-dim">…form values…</span> } },<br>&nbsp;&nbsp;{ <span class="c-prop">new</span>: <span class="c-val">true</span>, <span class="c-prop">runValidators</span>: <span class="c-val">true</span> }<br>);`;
+}
+
+function updateProduct(){
+  const id=document.getElementById('u-select').value;
+  if(!id) return;
+  const data={
+    name:document.getElementById('u-name').value.trim(),
+    brand:document.getElementById('u-brand').value.trim(),
+    category:document.getElementById('u-cat').value,
+    price:document.getElementById('u-price').value,
+    stock:document.getElementById('u-stock').value||'0',
+    rating:document.getElementById('u-rating').value||null,
+    description:document.getElementById('u-desc').value.trim(),
+  };
+  const errs=validate(data);
+  if(errs.length){ toast('Validation: '+errs[0],'error'); return; }
+  const idx=DB.findIndex(p=>p._id===id);
+  if(idx===-1) return;
+  DB[idx]=preSave({...DB[idx],...data,price:parseFloat(data.price),stock:parseInt(data.stock)||0,rating:data.rating!==''&&data.rating!==null?parseFloat(data.rating):null});
+  refreshAll();
+  logOp('update','findByIdAndUpdate("'+id+'", { $set: '+JSON.stringify({name:data.name,price:parseFloat(data.price)}).replace('"','')+'… }) → OK');
+  toast('Updated: "'+data.name+'"','update');
+}
+
+// DELETE — findByIdAndDelete()
+function renderDeleteTable(){
+  const tbody=document.getElementById('del-tbody');
+  if(!DB.length){ tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">◌</div><p>No products.</p></div></td></tr>`; return; }
+  tbody.innerHTML=DB.map(p=>`<tr>
+    <td class="td-id">${p._id.slice(0,8)}…</td>
+    <td class="td-name">${esc(p.name)}</td>
+    <td><span class="chip chip-${p.category.slice(0,4).toLowerCase()}">${p.category}</span></td>
+    <td class="td-price">₹${p.price.toLocaleString('en-IN')}</td>
+    <td style="font-family:'JetBrains Mono',monospace;font-weight:600">${p.stock}</td>
+    <td><span class="${p.inStock?'in-stock':'out-stock'}">${p.inStock?'true':'false'}</span></td>
+    <td><button class="btn btn-red btn-xs" onclick="confirmDelete('${p._id}')">findByIdAndDelete</button></td>
+  </tr>`).join('');
+}
+
+let _delId=null;
+function confirmDelete(id){
+  const p=DB.find(x=>x._id===id);
+  if(!p) return;
+  _delId=id;
+  document.getElementById('confirm-msg').textContent='Delete "'+p.name+'"? This action cannot be undone.';
+  document.getElementById('confirm-yes-btn').onclick=()=>executeDelete(id);
+  document.getElementById('confirm-modal').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+
+function executeDelete(id){
+  const p=DB.find(x=>x._id===id);
+  DB=DB.filter(x=>x._id!==id);
+  closeAll();
+  refreshAll();
+  logOp('delete','findByIdAndDelete("'+id+'") → deleted "'+p.name+'"');
+  toast('Deleted: "'+p.name+'"','delete');
+}
+
+function deleteOutOfStock(){
+  const oos=DB.filter(p=>!p.inStock);
+  if(!oos.length){ toast('No out-of-stock products to delete','error'); return; }
+  if(!confirm('Delete '+oos.length+' out-of-stock product(s)?')) return;
+  const names=oos.map(p=>p.name);
+  DB=DB.filter(p=>p.inStock);
+  refreshAll();
+  logOp('delete','deleteMany({ inStock: false }) → deleted '+oos.length+' documents: '+names.join(', '));
+  toast('Deleted '+oos.length+' out-of-stock products','delete');
+}
+
+// ══════════════════════════════════════════════
+//  EDIT MODAL (from Read tab)
+// ══════════════════════════════════════════════
+function openEditModal(id){
+  const p=DB.find(x=>x._id===id);
+  if(!p) return;
+  document.getElementById('em-id').value=id;
+  document.getElementById('edit-id-label').textContent='_id: '+id;
+  document.getElementById('em-name').value=p.name;
+  document.getElementById('em-brand').value=p.brand||'';
+  document.getElementById('em-cat').value=p.category;
+  document.getElementById('em-price').value=p.price;
+  document.getElementById('em-stock').value=p.stock;
+  document.getElementById('em-rating').value=p.rating!==null?p.rating:'';
+  document.getElementById('em-desc').value=p.description||'';
+  document.getElementById('em-err').textContent='';
+  document.getElementById('edit-modal').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+function saveEditModal(){
+  const id=document.getElementById('em-id').value;
+  const data={
+    name:document.getElementById('em-name').value.trim(),
+    brand:document.getElementById('em-brand').value.trim(),
+    category:document.getElementById('em-cat').value,
+    price:document.getElementById('em-price').value,
+    stock:document.getElementById('em-stock').value||'0',
+    rating:document.getElementById('em-rating').value||null,
+    description:document.getElementById('em-desc').value.trim(),
+  };
+  const errs=validate(data);
+  if(errs.length){ document.getElementById('em-err').textContent='Validation: '+errs[0]; return; }
+  const idx=DB.findIndex(p=>p._id===id);
+  if(idx===-1) return;
+  DB[idx]=preSave({...DB[idx],...data,price:parseFloat(data.price),stock:parseInt(data.stock)||0,rating:data.rating!==''&&data.rating!==null?parseFloat(data.rating):null});
+  closeAll();refreshAll();
+  logOp('update','findByIdAndUpdate("'+id.slice(0,8)+'…") → "'+data.name+'" updated');
+  toast('Updated: "'+data.name+'"','update');
+}
+
+// ══════════════════════════════════════════════
+//  OVERVIEW STATS
+// ══════════════════════════════════════════════
+function renderStats(){
+  const total=DB.length;
+  const inStock=DB.filter(p=>p.inStock).length;
+  const outStock=DB.filter(p=>!p.inStock).length;
+  const avgPrice=total?Math.round(DB.reduce((s,p)=>s+p.price,0)/total):0;
+  document.getElementById('overview-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total Documents</div><div class="stat-num sn-total">${total}</div><div class="stat-sub">in products collection</div></div>
+    <div class="stat-card"><div class="stat-label">In Stock</div><div class="stat-num sn-green">${inStock}</div><div class="stat-sub">inStock: true</div></div>
+    <div class="stat-card"><div class="stat-label">Out of Stock</div><div class="stat-num sn-red">${outStock}</div><div class="stat-sub">inStock: false</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Price</div><div class="stat-num sn-amber">₹${avgPrice.toLocaleString('en-IN')}</div><div class="stat-sub">across all products</div></div>`;
+  document.getElementById('sb-count').textContent=total;
+}
+
+// ══════════════════════════════════════════════
+//  CODE PREVIEW (Create tab)
+// ══════════════════════════════════════════════
+function updateCreateCodePreview(){
+  const n=document.getElementById('c-name').value.trim()||'…';
+  const pr=document.getElementById('c-price').value||'…';
+  const cat=document.getElementById('c-cat').value||'…';
+  const br=document.getElementById('c-brand').value.trim();
+  const st=document.getElementById('c-stock').value||'0';
+  document.getElementById('create-code-preview').innerHTML=
+`<span class="c-kw">const</span> <span class="c-white">product</span> = <span class="c-kw">new</span> <span class="c-type">Product</span>({<br>
+&nbsp;&nbsp;<span class="c-prop">name</span>: <span class="c-str">"${esc(n)}"</span>,<br>
+&nbsp;&nbsp;<span class="c-prop">price</span>: <span class="c-num">${esc(pr)}</span>,<br>
+&nbsp;&nbsp;<span class="c-prop">category</span>: <span class="c-str">"${esc(cat)}"</span>,<br>
+${br?`&nbsp;&nbsp;<span class="c-prop">brand</span>: <span class="c-str">"${esc(br)}"</span>,<br>`:''}
+&nbsp;&nbsp;<span class="c-prop">stock</span>: <span class="c-num">${esc(st)}</span>,  <span class="c-comment">// pre-save sets inStock = stock > 0</span><br>
+});<br>
+<span class="c-kw">await</span> product.<span class="c-fn">save</span>();  <span class="c-comment">// runs validation + middleware</span>`;
+}
+['c-name','c-price','c-cat','c-brand','c-stock'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input',updateCreateCodePreview);
+});
+
+// ══════════════════════════════════════════════
+//  LOG
+// ══════════════════════════════════════════════
+function logOp(type,msg){
+  const log=document.getElementById('op-log');
+  const d=document.createElement('div');
+  d.className='log-line';
+  d.innerHTML=`<span class="log-ts">[${ts()}]</span><span class="log-op ${type}">${type.toUpperCase()}</span><span class="log-msg">${esc(msg)}</span>`;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
+}
+function clearLog(){ document.getElementById('op-log').innerHTML='<div class="log-line"><span class="log-ts">[CLR]</span><span class="log-op system">SYS</span><span class="log-msg">Log cleared</span></div>'; }
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function showTab(name){
+  ['overview','schema','create','read','update','delete'].forEach(t=>{
+    document.getElementById('view-'+t).style.display=t===name?'':'none';
+    document.getElementById('tab-'+t).classList.toggle('active',t===name);
+    document.getElementById('sb-'+t)?.classList.toggle('active',t===name);
+  });
+  if(name==='read'){ renderReadTable(DB); logOp('read','Product.find({}) → '+DB.length+' documents'); }
+  if(name==='update') fillUpdateSelect();
+  if(name==='delete') renderDeleteTable();
+  if(name==='overview') renderStats();
+}
+
+function resetCreate(){
+  ['c-name','c-brand','c-price','c-desc'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('c-cat').value='';
+  document.getElementById('c-stock').value='0';
+  document.getElementById('c-rating').value='';
+  ['c-name','c-cat','c-price'].forEach(id=>{ document.getElementById(id).classList.remove('err'); });
+  ['c-name-err','c-cat-err','c-price-err'].forEach(id=>{ document.getElementById(id).classList.remove('show'); });
+  updateCreateCodePreview();
+}
+
+function refreshAll(){
+  renderStats();
+  renderReadTable(readProducts({q:document.getElementById('r-search')?.value,cat:document.getElementById('r-cat')?.value,stock:document.getElementById('r-stock')?.value}));
+  fillUpdateSelect();
+  renderDeleteTable();
+}
+
+function closeAll(){
+  document.getElementById('edit-modal').classList.remove('open');
+  document.getElementById('confirm-modal').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+let _tt;
+function toast(msg,type){
+  clearTimeout(_tt);
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+(type||'')+' show';
+  _tt=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// BOOT
+renderStats();
+logOp('system','Mongoose connected · productSchema registered · 5 seed documents loaded');
+showTab('overview');
+</script>
+</body>
+</html>
